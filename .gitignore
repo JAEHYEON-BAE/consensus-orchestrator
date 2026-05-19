@@ -35,3 +35,8 @@ yarn-debug.log*
 tmp/
 temp/
 .cache/
+
+# AI agnet
+.claude/
+CLAUDE.md
+AGENTS.md
