@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { Orchestrator } from "../../core/src/index.js";
+import { Orchestrator, OrchestratorError } from "../../core/src/index.js";
 
 const program = new Command();
 
@@ -7,7 +7,9 @@ program
   .name("co-run")
   .argument("<task>", "task to run through the consensus loop")
   .option("-m, --max-iterations <n>", "maximum review iterations", "3")
-  .action(async (task: string, options: { maxIterations: string }) => {
+  .option("-w, --workspace <path>", "directory for run artifacts", ".agent-workspace")
+  .option("--verbose", "print full plan and review text for each event")
+  .action(async (task: string, options: { maxIterations: string; workspace: string; verbose: boolean }) => {
     const maxIterations = Number.parseInt(options.maxIterations, 10);
 
     if (!Number.isInteger(maxIterations) || maxIterations < 1 || maxIterations > 10) {
@@ -18,6 +20,7 @@ program
     const orchestrator = new Orchestrator({
       task,
       maxIterations,
+      workspacePath: options.workspace,
       onEvent: (event) => {
         switch (event.type) {
           case "planning_started":
@@ -36,12 +39,27 @@ program
       },
     });
 
-    const result = await orchestrator.run();
+    try {
+      const result = await orchestrator.run();
 
-    console.log("");
-    console.log("Done.");
-    console.log(`Converged: ${result.converged}`);
-    console.log(`Iterations: ${result.iterations}`);
+      console.log("");
+      console.log(`Converged: ${result.converged}`);
+      console.log(`Iterations: ${result.iterations}`);
+      console.log(`Artifacts: ${result.artifacts[0] ? result.artifacts[0].path.replace(/\/[^/]+$/, "") : "none"}`);
+
+      if (options.verbose) {
+        console.log("");
+        console.log("--- Final Plan ---");
+        console.log(result.finalPlan);
+      }
+    } catch (err) {
+      if (err instanceof OrchestratorError) {
+        console.error(`\nError during ${err.phase} (iteration ${err.iteration}): ${String(err.cause)}`);
+      } else {
+        console.error(`\nUnexpected error: ${String(err)}`);
+      }
+      process.exit(2);
+    }
   });
 
 program.parseAsync();

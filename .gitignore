@@ -36,7 +36,8 @@ tmp/
 temp/
 .cache/
 
-# AI agnet
+# AI agent
 .claude/
 CLAUDE.md
 AGENTS.md
+FEEDBACK.md
